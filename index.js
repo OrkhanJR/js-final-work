@@ -6,6 +6,7 @@ function Task(id, description, cost) {
   }
 
   this._id = id || "id" + Math.random().toString(16).slice(2);
+
   if (typeof description === "string") {
     this._description = description;
   } else {
@@ -43,11 +44,26 @@ class IncomeTask extends Task {
   constructor(id, description, cost) {
     super(id, description, cost);
   }
+  makeDone(budget) {
+    budget.income += this._cost;
+  }
+
+  makeUnDone(budget) {
+    budget.income -= this._cost;
+  }
 }
 
 class ExpenseTask extends Task {
   constructor(id, description, cost) {
     super(id, description, cost);
+  }
+
+  makeDone(budget) {
+    budget.expenses += this._cost;
+  }
+
+  makeUnDone(budget) {
+    budget.expenses -= this._cost;
   }
 }
 
@@ -61,8 +77,6 @@ class TasksController {
     for (const task of tasks) {
       if (task instanceof Task) {
         this.#tasks.push(task);
-      } else {
-        throw new Error("Each task must be an instance of Task class");
       }
     }
     return tasks;
@@ -77,29 +91,25 @@ class BudgetController {
   #tasksController;
   #budget;
 
-  constructor(initialBalance = 20) {
+  constructor(initialBalance = 0) {
     this.#tasksController = new TasksController();
     this.#budget = {
       balance: initialBalance,
       income: 15,
-      expenses: 5,
+      expenses: 10,
     };
-
-    Object.defineProperty(this, "budget", {
-      get() {
-        return this.#budget;
-      },
-    });
     Object.defineProperty(this, "balance", {
       get() {
         return this.#budget.balance;
       },
     });
+
     Object.defineProperty(this, "income", {
       get() {
         return this.#budget.income;
       },
     });
+
     Object.defineProperty(this, "expenses", {
       get() {
         return this.#budget.expenses;
@@ -107,23 +117,17 @@ class BudgetController {
     });
   }
 
-  calculateBalance(balance) {
-    let remainingBalance = balance;
-    remainingBalance = this.#budget.income - this.#budget.expenses;
+  calculateBalance() {
+    return this.#budget.balance + this.#budget.income - this.#budget.expenses;
   }
 }
 
-const task = new Task("", "task1", 1);
-const incomeTask = new IncomeTask("", "Income task", 15);
-const expenseTask = new ExpenseTask("", "Expense task", 16);
-const taskController = new TasksController();
+const task1 = new Task("", "task1", 10);
+const tasksController = new TasksController();
 const budgetController = new BudgetController();
 
-console.log(budgetController.calculateBalance());
 
-// console.clear();
-// console.log(taskController.getTasks());
-
-//   console.log(task);
-//   console.log(incomeTask);
-//   console.log(expenseTask);
+console.log(task1);
+console.log(budgetController.balance);
+console.log(tasksController.addTasks());
+console.log(tasksController.getTasks());
