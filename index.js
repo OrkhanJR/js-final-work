@@ -1,55 +1,69 @@
-console.clear();
-
 function Task(id, description, cost) {
   if (!new.target) {
     throw new Error("Can't create without new");
   }
 
   this._id = id || "id" + Math.random().toString(16).slice(2);
+  this._isCompleted = false;
 
   if (typeof description === "string") {
     this._description = description;
   } else {
-    throw new Error("Description must be a string");
+    throw new Error(
+      `Description must be a string, received: ${typeof description}`
+    );
   }
 
   if (typeof cost === "number" && cost >= 0) {
     this._cost = cost;
   } else {
     throw new Error(
-      "Cost must be a number and should be greater than or equal to 0"
+      `Cost must be a number and should be greater than or equal to 0, received: ${cost}`
     );
   }
 
+  Object.defineProperty(this, "isCompleted", {
+    get: function () {
+      return this._isCompleted;
+    },
+  });
+
   Object.defineProperty(this, "id", {
-    get() {
+    get: function () {
       return this._id;
     },
   });
 
   Object.defineProperty(this, "description", {
-    get() {
+    get: function () {
       return this._description;
     },
   });
 
   Object.defineProperty(this, "cost", {
-    get() {
+    get: function () {
       return this._cost;
     },
   });
+
+  Task.prototype.isDone = function () {
+    return this._isCompleted;
+  };
 }
 
 class IncomeTask extends Task {
   constructor(id, description, cost) {
     super(id, description, cost);
   }
+
   makeDone(budget) {
-    budget.income += this._cost;
+    this._isCompleted = true;
+    budget.addIncome(this.cost);
   }
 
   makeUnDone(budget) {
-    budget.income -= this._cost;
+    this._isCompleted = false;
+    budget.addIncome(-this.cost);
   }
 }
 
@@ -59,11 +73,13 @@ class ExpenseTask extends Task {
   }
 
   makeDone(budget) {
-    budget.expenses += this._cost;
+    this._isCompleted = true;
+    budget.addExpenses(this.cost);
   }
 
   makeUnDone(budget) {
-    budget.expenses -= this._cost;
+    this._isCompleted = false;
+    budget.addExpenses(-this.cost);
   }
 }
 
@@ -74,16 +90,46 @@ class TasksController {
   }
 
   addTasks(...tasks) {
-    for (const task of tasks) {
-      if (task instanceof Task) {
-        this.#tasks.push(task);
+    this.#tasks.push(...tasks);
+  }
+
+  deleteTask(task) {
+    const index = this.#tasks.findIndex(function (t) {
+      return t.id === task.id;
+    });
+
+    if (index !== -1) {
+      const deletedTask = this.#tasks.splice(index, 1)[0];
+
+      if (deletedTask.isDone()) {
+        deletedTask.makeUnDone();
       }
+    } else {
+      console.log("Task " + task.id + " isn't recognized");
     }
-    return tasks;
   }
 
   getTasks() {
     return this.#tasks;
+  }
+
+  getTasksSortedBy(sortBy) {
+    switch (sortBy) {
+      case "description":
+        return this.#tasks.slice().sort(function (a, b) {
+          return a.description.localeCompare(b.description);
+        });
+      case "status":
+        return this.#tasks.slice().sort(function (a, b) {
+          return a.isCompleted - b.isCompleted;
+        });
+      case "cost":
+        return this.#tasks.slice().sort(function (a, b) {
+          return b.cost - a.cost;
+        });
+      default:
+        return this.#tasks;
+    }
   }
 }
 
@@ -95,9 +141,10 @@ class BudgetController {
     this.#tasksController = new TasksController();
     this.#budget = {
       balance: initialBalance,
-      income: 15,
-      expenses: 10,
+      income: 10,
+      expenses: 5,
     };
+
     Object.defineProperty(this, "balance", {
       get() {
         return this.#budget.balance;
@@ -120,14 +167,35 @@ class BudgetController {
   calculateBalance() {
     return this.#budget.balance + this.#budget.income - this.#budget.expenses;
   }
+
+  addIncome(amount) {
+    this.#budget.income += amount;
+  }
+
+  addExpenses(amount) {
+    this.#budget.expenses += amount;
+  }
+
+  doneTask(task) {
+    if (!task.isDone()) {
+      task.makeDone(this);
+    } else {
+      console.log(`Task is already done`);
+    }
+  }
+
+  unDoneTask(task) {
+    if (task.isDone()) {
+      task.makeUnDone(this);
+    } else {
+      console.log(`Task isn't done before`);
+    }
+  }
+
+  get tasksController() {
+    return this.#tasksController;
+  }
 }
 
-const task1 = new Task("", "task1", 10);
-const tasksController = new TasksController();
-const budgetController = new BudgetController();
-
-
+const task1 = new Task("", "1", 10)
 console.log(task1);
-console.log(budgetController.balance);
-console.log(tasksController.addTasks());
-console.log(tasksController.getTasks());
